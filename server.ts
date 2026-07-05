@@ -4,8 +4,11 @@ import fs from "fs";
 import http from "http";
 import { createServer as createViteServer } from "vite";
 
+const app = express();
+
+export default app; // Export app for Vercel Serverless Functions
+
 async function startServer() {
-  const app = express();
   let PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
   app.use(express.json());
@@ -17,9 +20,28 @@ async function startServer() {
   const DOT_USERS_FILE = path.join(process.cwd(), "node_modules", ".users_db.json");
   const LEGACY_USERS_FILE = path.join(process.cwd(), "users_db.json");
 
+  // In-memory database fallback to prevent read/write crashes on read-only environments like Vercel
+  let inMemoryUsersFallback: Record<string, any> = {};
+
   // Helper to read users from DB
   function readUsers() {
     try {
+      // If we are on Vercel, we can use the writable /tmp folder, or just use the in-memory fallback
+      const isVercel = !!process.env.VERCEL;
+      const targetFile = isVercel ? "/tmp/users_db.json" : USERS_FILE;
+
+      if (isVercel) {
+        if (fs.existsSync(targetFile)) {
+          try {
+            const data = fs.readFileSync(targetFile, "utf-8");
+            return JSON.parse(data || "{}");
+          } catch (e) {
+            console.error("Vercel /tmp read failed, using in-memory fallback:", e);
+          }
+        }
+        return inMemoryUsersFallback;
+      }
+
       // Automatic Import: If a user manually places users_db.json in the root,
       // read it, migrate it to node_modules/users_db.json, and delete the root file
       // to prevent loop reloads.
@@ -58,23 +80,30 @@ async function startServer() {
         fs.writeFileSync(USERS_FILE, JSON.stringify({}));
       }
       const data = fs.readFileSync(USERS_FILE, "utf-8");
-      return JSON.parse(data || "{}");
+      const parsed = JSON.parse(data || "{}");
+      // Keep fallback in sync
+      inMemoryUsersFallback = parsed;
+      return parsed;
     } catch (e) {
-      console.error("Error reading users file:", e);
-      return {};
+      console.error("Error reading users file, returning in-memory fallback:", e);
+      return inMemoryUsersFallback;
     }
   }
 
   // Helper to write users to DB
   function writeUsers(users: any) {
+    inMemoryUsersFallback = users;
     try {
-      const parentDir = path.dirname(USERS_FILE);
+      const isVercel = !!process.env.VERCEL;
+      const targetFile = isVercel ? "/tmp/users_db.json" : USERS_FILE;
+
+      const parentDir = path.dirname(targetFile);
       if (!fs.existsSync(parentDir)) {
         fs.mkdirSync(parentDir, { recursive: true });
       }
-      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+      fs.writeFileSync(targetFile, JSON.stringify(users, null, 2));
     } catch (e) {
-      console.error("Error writing users file:", e);
+      console.error("Error writing users file (using in-memory fallback):", e);
     }
   }
 
@@ -225,7 +254,10 @@ async function startServer() {
     }
   });
 
-  startListening(PORT);
+  // Only start listening if NOT running on Vercel as a Serverless Function
+  if (!process.env.VERCEL) {
+    startListening(PORT);
+  }
 }
 
 startServer();
