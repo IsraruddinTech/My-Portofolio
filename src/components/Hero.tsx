@@ -2,13 +2,16 @@ import { useState, useRef, MouseEvent } from "react";
 import { motion } from "motion/react";
 import { Sparkles, Gamepad2, ArrowRight } from "lucide-react";
 import { sound } from "../utils/sound";
+// @ts-expect-error - static asset import
+import israruddinPortrait from "../assets/images/israruddin_original.jpg?url"; 
 
 const imageFallbacks = [
+  israruddinPortrait,
+  "/src/assets/images/israruddin_original.jpg",
   "/src/assets/images/israruddin_original.jpg",
   "/src/assets/images/israruddin_original.png",
   "/src/assets/images/israruddin_original.jpeg",
-  "/src/assets/images/israruddin_portrait_1782633153181.jpg",
-  "/src/assets/images/rafly_portrait_1782629305639.jpg"
+  "/src/assets/images/israruddin_original.webp",
 ];
 
 interface HeroProps {
