@@ -1,0 +1,6 @@
+{
+  "name": "ISRARUDDIN - Retro Pokémon Developer Portfolio & Battle Game",
+  "description": "An interactive retro Pokémon-style developer portfolio for Israruddin, featuring badges, dynamic Pokédex projects, a keyboard-triggered Mew easter egg, and an interactive Pokémon battle game with user account management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
